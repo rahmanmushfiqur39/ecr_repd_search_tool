@@ -250,8 +250,8 @@ if repd_df is not None and ecr_df is not None:
             search_df = safe_to_numeric(search_df, [repd_x_col, repd_y_col, repd_cap_col])
 
         # Add output columns
-        out_cols = [dynamic_pull_col_name, "Matching Reason", "Matched Details REPD", "Matched Details ECR"]
-        for c in reversed(out_cols):
+        out_cols = ["Matching Reason", "Matched Details REPD", "Matched Details ECR", dynamic_pull_col_name]
+        for c in out_cols:
             base_df.insert(0, c, "NF")
 
         # Build geodataframes (cached)
