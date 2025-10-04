@@ -57,10 +57,28 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         base_cap = ecr_effective_capacity(base_row, ecr_status_col, ecr_alr_col, ecr_acc_col)
       
     if pd.notna(base_cap) and pd.notna(search_cap):
-        if abs(search_cap - base_cap) <= cap_tolerance * base_cap:
+        diff = abs(search_cap - base_cap)
+        tol = cap_tolerance * base_cap
+        st.write({
+            "DEBUG": "Capacity Check",
+            "base_cap": base_cap,
+            "search_cap": search_cap,
+            "diff": diff,
+            "tolerance_limit": tol,
+            "cap_tolerance": cap_tolerance,
+            "condition_met": diff <= tol
+        })
+        if diff <= tol:
             reasons.add("Capacity")
             base_details.append(f"capacity: {base_cap}")
             search_details.append(f"capacity: {search_cap}")
+    else:
+        st.write({
+            "DEBUG": "Capacity skipped (NaN)",
+            "base_cap": base_cap,
+            "search_cap": search_cap
+        })
+
 
     # Text Group A
     base_text_a = joined_text(base_row, base_cols["text_a"])
