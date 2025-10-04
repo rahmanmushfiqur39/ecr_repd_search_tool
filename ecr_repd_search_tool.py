@@ -295,23 +295,23 @@ if repd_df is not None and ecr_df is not None:
                     not base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
                 # --- DEBUG: check capacity inputs ---
-st.write({
-    "base_id": b.get(repd_id_col if base_is_repd else ecr_id_col),
-    "search_id": s.get(ecr_id_col if base_is_repd else repd_id_col),
-    "status": s.get(ecr_status_col),
-    "base_cap_col": base_cols_map["capacity"],
-    "search_cap_col": search_cols_map["capacity"],
-    "base_cap": (
-        pd.to_numeric(b.get(base_cols_map["capacity"], np.nan), errors="coerce")
-        if base_is_repd
-        else ecr_effective_capacity(b, ecr_status_col, ecr_already_col, ecr_accepted_col)
-    ),
-    "search_cap": (
-        ecr_effective_capacity(s, ecr_status_col, ecr_already_col, ecr_accepted_col)
-        if base_is_repd
-        else pd.to_numeric(s.get(search_cols_map["capacity"], np.nan), errors="coerce")
-    ),
-})
+                st.write({
+                    "base_id": b.get(repd_id_col if base_is_repd else ecr_id_col),
+                    "search_id": s.get(ecr_id_col if base_is_repd else repd_id_col),
+                    "status": s.get(ecr_status_col),
+                    "base_cap_col": base_cols_map["capacity"],
+                    "search_cap_col": search_cols_map["capacity"],
+                    "base_cap": (
+                        pd.to_numeric(b.get(base_cols_map["capacity"], np.nan), errors="coerce")
+                        if base_is_repd
+                        else ecr_effective_capacity(b, ecr_status_col, ecr_already_col, ecr_accepted_col)
+                    ),
+                    "search_cap": (
+                        ecr_effective_capacity(s, ecr_status_col, ecr_already_col, ecr_accepted_col)
+                        if base_is_repd
+                        else pd.to_numeric(s.get(search_cols_map["capacity"], np.nan), errors="coerce")
+                    ),
+                })
 
                 if score > best_score:
                     best, best_score, best_reasons = s, score, reasons
