@@ -44,13 +44,18 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     reasons = {"Spatial"}
     base_details, search_details = [], []
 
-    # Capacity
-    base_cap = pd.to_numeric(base_row.get(base_cols["capacity"], np.nan), errors="coerce")
+    # --- Search capacity ---
     if is_search_ecr:
+        # search dataset is ECR
         search_cap = ecr_effective_capacity(search_row, ecr_status_col, ecr_alr_col, ecr_acc_col)
+        # base dataset is REPD
+        base_cap = pd.to_numeric(base_row.get(base_cols["capacity"], np.nan), errors="coerce")
     else:
+        # search dataset is REPD
         search_cap = pd.to_numeric(search_row.get(search_cols["capacity"], np.nan), errors="coerce")
-
+        # base dataset is ECR
+        base_cap = ecr_effective_capacity(base_row, ecr_status_col, ecr_alr_col, ecr_acc_col)
+      
     if pd.notna(base_cap) and pd.notna(search_cap):
         if abs(search_cap - base_cap) <= cap_tolerance * base_cap:
             reasons.add("Capacity")
@@ -182,7 +187,6 @@ if repd_df is not None and ecr_df is not None:
     st.markdown("---")
     st.markdown("**ECR columns**")
     ecr_id_col = st.selectbox("ECR ID", ecr_cols)
-    ecr_cap_col = st.selectbox("ECR Capacity", ecr_cols)
     ecr_text_a_cols = st.multiselect("ECR Text Group A", ecr_cols)
     ecr_text_b_cols = st.multiselect("ECR Text Group B", ecr_cols)
     ecr_status_col = st.selectbox("ECR Connection Status", ecr_cols)
@@ -237,9 +241,9 @@ if repd_df is not None and ecr_df is not None:
         # Clean numeric columns
         if base_is_repd:
             base_df = safe_to_numeric(base_df, [repd_x_col, repd_y_col, repd_cap_col])
-            search_df = safe_to_numeric(search_df, [ecr_x_col, ecr_y_col, ecr_cap_col, ecr_already_col, ecr_accepted_col])
+            search_df = safe_to_numeric(search_df, [ecr_x_col, ecr_y_col, ecr_already_col, ecr_accepted_col])
         else:
-            base_df = safe_to_numeric(base_df, [ecr_x_col, ecr_y_col, ecr_cap_col, ecr_already_col, ecr_accepted_col])
+            base_df = safe_to_numeric(base_df, [ecr_x_col, ecr_y_col, ecr_already_col, ecr_accepted_col])
             search_df = safe_to_numeric(search_df, [repd_x_col, repd_y_col, repd_cap_col])
 
         # Add output columns
@@ -256,13 +260,13 @@ if repd_df is not None and ecr_df is not None:
             search_gdf = make_geodf(search_df, repd_x_col, repd_y_col)
 
         base_cols_map = {
-            "capacity": repd_cap_col if base_is_repd else ecr_cap_col,
+            "capacity": repd_cap_col if base_is_repd else None,
             "text_a": repd_text_a_cols if base_is_repd else ecr_text_a_cols,
             "text_b": repd_text_b_cols if base_is_repd else ecr_text_b_cols,
             "postcode": repd_pc_col if base_is_repd else ecr_pc_col,
         }
         search_cols_map = {
-            "capacity": ecr_cap_col if base_is_repd else repd_cap_col,
+            "capacity": ecr_cap_col if base_is_repd else None,
             "text_a": ecr_text_a_cols if base_is_repd else repd_text_a_cols,
             "text_b": ecr_text_b_cols if base_is_repd else repd_text_b_cols,
             "postcode": ecr_pc_col if base_is_repd else repd_pc_col,
