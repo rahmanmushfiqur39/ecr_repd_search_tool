@@ -269,7 +269,7 @@ if repd_df is not None and ecr_df is not None:
             "postcode": repd_pc_col if base_is_repd else ecr_pc_col,
         }
         search_cols_map = {
-            "capacity": ecr_cap_col if base_is_repd else None,
+            "capacity": repd_cap_col if not base_is_repd else None,
             "text_a": ecr_text_a_cols if base_is_repd else repd_text_a_cols,
             "text_b": ecr_text_b_cols if base_is_repd else repd_text_b_cols,
             "postcode": ecr_pc_col if base_is_repd else repd_pc_col,
