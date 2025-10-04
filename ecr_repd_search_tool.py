@@ -4,16 +4,16 @@ import numpy as np
 from rapidfuzz import fuzz
 import geopandas as gpd
 
-# ----------------------------------
-# Constants (defaults; now user-editable in the UI)
-# ----------------------------------
+# ----------------------------
+# Default Parameters
+# ----------------------------
 DEFAULT_BUFFER_KM = 2.0
-DEFAULT_CAP_TOL = 0.10          # 10%
-DEFAULT_TEXT_THRESH = 70        # 0-100
+DEFAULT_CAP_TOL = 0.10
+DEFAULT_TEXT_THRESH = 70
 
-# ----------------------------------
+# ----------------------------
 # Helpers
-# ----------------------------------
+# ----------------------------
 def safe_to_numeric(df, cols):
     for col in cols:
         if col and col in df.columns:
@@ -21,71 +21,28 @@ def safe_to_numeric(df, cols):
     return df
 
 def joined_text(row, cols):
-    vals = []
-    for c in cols:
-        if c and c in row and pd.notna(row[c]):
-            vals.append(str(row[c]))
+    vals = [str(row[c]) for c in cols if c in row and pd.notna(row[c])]
     return " ".join(vals).strip()
 
 def normalize_postcode(s):
-    if pd.isna(s):
-        return ""
-    return str(s).replace(" ", "").lower()
+    return str(s).replace(" ", "").lower() if pd.notna(s) else ""
 
 def ecr_effective_capacity(row, status_col, already_col, accepted_col):
-    """
-    Returns a numeric capacity based on ECR connection status rules:
-      - if status == 'Connected' => use 'Already Connected Capacity'
-      - if status == 'Accepted To Connect' => use 'Accepted to Connect Capacity'
-    If fields are missing or unparsable, returns NaN.
-    """
     status = str(row.get(status_col, "")).strip().lower()
     if status == "connected":
         return pd.to_numeric(row.get(already_col, np.nan), errors="coerce")
     if status == "accepted to connect":
         return pd.to_numeric(row.get(accepted_col, np.nan), errors="coerce")
-    # For any other status, return NaN (won't pass capacity test)
     return np.nan
 
-def build_geo(df, x_col, y_col, epsg="EPSG:27700"):
-    try:
-        gdf = gpd.GeoDataFrame(
-            df,
-            geometry=gpd.points_from_xy(df[x_col], df[y_col], crs=epsg)
-        )
-        return gdf
-    except Exception as e:
-        st.error(f"Coordinate error for columns [{x_col}], [{y_col}]: {e}")
-        st.stop()
-
 def ordered_reasons(flags):
-    """
-    Make reason strings deterministic to support 'Ignore these matches' step.
-    Order: Spatial, Text (GrpA), Text (GrpB), Capacity, Postcode
-    """
     order = ["Spatial", "Text (GrpA)", "Text (GrpB)", "Capacity", "Postcode"]
-    present = [r for r in order if r in flags]
-    return ", ".join(present)
+    return ", ".join([r for r in order if r in flags])
 
-def compute_match(
-    base_row,
-    search_row,
-    text_thresh,
-    base_cols,
-    search_cols,
-    is_search_ecr,
-    ecr_status_col,
-    ecr_alr_col,
-    ecr_acc_col,
-    cap_tolerance
-):
-    """
-    Returns:
-      (score:int, reasons:list[str], base_details:list[str], search_details:list[str])
-    """
-    reasons = set(["Spatial"])  # spatial is pre-qualified by geometry filter
-    base_details = []
-    search_details = []
+def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
+                  is_search_ecr, ecr_status_col, ecr_alr_col, ecr_acc_col, cap_tolerance):
+    reasons = {"Spatial"}
+    base_details, search_details = [], []
 
     # Capacity
     base_cap = pd.to_numeric(base_row.get(base_cols["capacity"], np.nan), errors="coerce")
@@ -126,50 +83,68 @@ def compute_match(
         base_details.append(f"postcode: {base_pc}")
         search_details.append(f"postcode: {search_pc}")
 
-    # Score = count of reasons
-    score = len(reasons)
-    return score, ordered_reasons(reasons), base_details, search_details
+    return len(reasons), ordered_reasons(reasons), base_details, search_details
 
-# ----------------------------------
-# UI
-# ----------------------------------
+
+# ----------------------------
+# Caching Functions
+# ----------------------------
+@st.cache_data
+def load_excel(uploaded, sheet=None):
+    return pd.read_excel(uploaded, sheet_name=sheet)
+
+@st.cache_data
+def make_geodf(df, x_col, y_col):
+    return gpd.GeoDataFrame(df,
+                            geometry=gpd.points_from_xy(df[x_col], df[y_col], crs="EPSG:27700"))
+
+
+# ----------------------------
+# Streamlit UI
+# ----------------------------
 st.set_page_config(page_title="ECR–REPD Matching Tool", layout="wide")
-st.title("⚡ ECR–REPD Matching Tool (Dynamic)")
+st.title("⚡ ECR–REPD Matching Tool (Optimized)")
 
-# --- Step 1: Ask file format (kept the same) ---
+# --- Step 1: File Input
 file_option = st.radio(
     "Do you have one file with two sheets or two separate files?",
     ("One file, two sheets", "Two separate files")
 )
 
-repd_df = None
-ecr_df = None
+repd_df, ecr_df = None, None
 
-# --- Step 2: File Upload (kept the same) ---
 if file_option == "One file, two sheets":
     uploaded = st.file_uploader("Upload Excel file", type=["xlsx"])
     if uploaded:
-        try:
-            repd_df = pd.read_excel(uploaded, sheet_name="REPD")
-            ecr_df = pd.read_excel(uploaded, sheet_name="ECR")
-            st.success("✅ Loaded REPD and ECR sheets.")
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
+        if "repd_df" not in st.session_state:
+            try:
+                st.session_state.repd_df = load_excel(uploaded, sheet="REPD")
+                st.session_state.ecr_df = load_excel(uploaded, sheet="ECR")
+                st.success("✅ Loaded REPD and ECR sheets.")
+            except Exception as e:
+                st.error(f"Error reading file: {e}")
+        repd_df = st.session_state.repd_df
+        ecr_df = st.session_state.ecr_df
 else:
     repd_file = st.file_uploader("Upload REPD Excel", type=["xlsx"], key="repd")
     ecr_file = st.file_uploader("Upload ECR Excel", type=["xlsx"], key="ecr")
     if repd_file and ecr_file:
-        try:
-            repd_df = pd.read_excel(repd_file)
-            ecr_df = pd.read_excel(ecr_file)
-            st.success("✅ Loaded REPD and ECR files.")
-        except Exception as e:
-            st.error(f"Error reading files: {e}")
+        if "repd_df" not in st.session_state:
+            try:
+                st.session_state.repd_df = load_excel(repd_file)
+                st.session_state.ecr_df = load_excel(ecr_file)
+                st.success("✅ Loaded REPD and ECR files.")
+            except Exception as e:
+                st.error(f"Error reading files: {e}")
+        repd_df = st.session_state.repd_df
+        ecr_df = st.session_state.ecr_df
 
-# Proceed if both datasets are present
+
+# ----------------------------
+# Proceed only if both loaded
+# ----------------------------
 if repd_df is not None and ecr_df is not None:
-
-    # --- Step 2 (new): Direction of search ---
+    # --- Step 2: Direction
     st.subheader("Search Direction")
     direction = st.radio(
         "Choose what to search:",
@@ -180,195 +155,145 @@ if repd_df is not None and ecr_df is not None:
     )
     base_is_repd = "Base = REPD" in direction
 
-    # Column lists for dropdowns
-    repd_cols = list(repd_df.columns)
-    ecr_cols  = list(ecr_df.columns)
+    repd_cols, ecr_cols = list(repd_df.columns), list(ecr_df.columns)
 
-    # --- Step 3: Parameter inputs ---
+    # --- Step 3: Parameters
     st.subheader("Matching Parameters")
     cols_params = st.columns(3)
     with cols_params[0]:
-        buffer_km = st.number_input("Buffer distance (km)", min_value=0.0, value=DEFAULT_BUFFER_KM, step=0.5)
+        buffer_km = st.number_input("Buffer distance (km)", 0.0, 100.0, DEFAULT_BUFFER_KM, 0.5)
     with cols_params[1]:
-        cap_tol = st.number_input("Capacity tolerance (fraction)", min_value=0.0, value=DEFAULT_CAP_TOL, step=0.01,
-                                  help="0.10 means ±10% of the base project's capacity")
+        cap_tol = st.number_input("Capacity tolerance (fraction)", 0.0, 1.0, DEFAULT_CAP_TOL, 0.01)
     with cols_params[2]:
-        text_thresh = st.slider("Text matching factor (0–100)", min_value=0, max_value=100, value=DEFAULT_TEXT_THRESH)
+        text_thresh = st.slider("Text matching factor (0–100)", 0, 100, DEFAULT_TEXT_THRESH)
 
-    # --- Step 4: Dynamic column selectors ---
+    # --- Step 4: Column mapping (same structure)
     st.subheader("Column Mapping")
 
     st.markdown("**REPD columns**")
-    repd_id_col = st.selectbox("REPD ID", repd_cols, index=repd_cols.index("REPD_ID") if "REPD_ID" in repd_cols else 0)
-    repd_cap_col = st.selectbox("REPD Capacity", repd_cols, index=(repd_cols.index("Installed Capacity (MWelec)")
-                                                                   if "Installed Capacity (MWelec)" in repd_cols else 0))
-    repd_text_a_cols = st.multiselect("REPD Text Group A (e.g., Operator (or Applicant), Site Name)",
-                                      repd_cols, default=[c for c in ["Operator (or Applicant)", "Site Name"] if c in repd_cols])
-    repd_text_b_cols = st.multiselect("REPD Text Group B (e.g., Site Name, Address)",
-                                      repd_cols, default=[c for c in ["Site Name", "Address"] if c in repd_cols])
-    repd_pc_col = st.selectbox("REPD Postcode", repd_cols, index=(repd_cols.index("Post Code") if "Post Code" in repd_cols else 0))
-    repd_x_col = st.selectbox("REPD X (Easting)", repd_cols, index=(repd_cols.index("X-coordinate") if "X-coordinate" in repd_cols else 0))
-    repd_y_col = st.selectbox("REPD Y (Northing)", repd_cols, index=(repd_cols.index("Y-coordinate") if "Y-coordinate" in repd_cols else 0))
+    repd_id_col = st.selectbox("REPD ID", repd_cols)
+    repd_cap_col = st.selectbox("REPD Capacity", repd_cols)
+    repd_text_a_cols = st.multiselect("REPD Text Group A", repd_cols)
+    repd_text_b_cols = st.multiselect("REPD Text Group B", repd_cols)
+    repd_pc_col = st.selectbox("REPD Postcode", repd_cols)
+    repd_x_col = st.selectbox("REPD X (Easting)", repd_cols)
+    repd_y_col = st.selectbox("REPD Y (Northing)", repd_cols)
 
     st.markdown("---")
     st.markdown("**ECR columns**")
-    ecr_id_col = st.selectbox("ECR ID", ecr_cols, index=(ecr_cols.index("ECR_ID") if "ECR_ID" in ecr_cols else 0))
-    ecr_cap_col = st.selectbox("ECR Capacity (use only if NOT using Connection Status rule)", ecr_cols,
-                               index=(ecr_cols.index("Accepted_to_Connect_Registered_")
-                                      if "Accepted_to_Connect_Registered_" in ecr_cols else 0))
-    ecr_text_a_cols = st.multiselect("ECR Text Group A (e.g., Customer Name, Customer Site)",
-                                     ecr_cols, default=[c for c in ["Customer_Name", "Customer_Site"] if c in ecr_cols])
-    ecr_text_b_cols = st.multiselect("ECR Text Group B (e.g., Customer Site, Address Line 1)",
-                                     ecr_cols, default=[c for c in ["Customer_Site", "Address_Line_1"] if c in ecr_cols])
-    ecr_status_col = st.selectbox("ECR Connection Status", ecr_cols,
-                                  index=(ecr_cols.index("Connection_Status") if "Connection_Status" in ecr_cols else 0))
-    ecr_already_col = st.selectbox("ECR Already Connected Capacity", ecr_cols,
-                                   index=(ecr_cols.index("Already_Connected_Registered_")
-                                          if "Already_Connected_Registered_" in ecr_cols else 0))
-    ecr_accepted_col = st.selectbox("ECR Accepted to Connect Capacity", ecr_cols,
-                                    index=(ecr_cols.index("Accepted_to_Connect_Registered_")
-                                           if "Accepted_to_Connect_Registered_" in ecr_cols else 0))
-    ecr_pc_col = st.selectbox("ECR Postcode", ecr_cols, index=(ecr_cols.index("Postcode") if "Postcode" in ecr_cols else 0))
-    ecr_x_col = st.selectbox("ECR X (Easting)", ecr_cols,
-                             index=(ecr_cols.index("Location__X_coordinate___Eastin") if "Location__X_coordinate___Eastin" in ecr_cols else 0))
-    ecr_y_col = st.selectbox("ECR Y (Northing)", ecr_cols,
-                             index=(ecr_cols.index("Location__y_coordinate___Northi") if "Location__y_coordinate___Northi" in ecr_cols else 0))
+    ecr_id_col = st.selectbox("ECR ID", ecr_cols)
+    ecr_cap_col = st.selectbox("ECR Capacity", ecr_cols)
+    ecr_text_a_cols = st.multiselect("ECR Text Group A", ecr_cols)
+    ecr_text_b_cols = st.multiselect("ECR Text Group B", ecr_cols)
+    ecr_status_col = st.selectbox("ECR Connection Status", ecr_cols)
+    ecr_already_col = st.selectbox("ECR Already Connected Capacity", ecr_cols)
+    ecr_accepted_col = st.selectbox("ECR Accepted to Connect Capacity", ecr_cols)
+    ecr_pc_col = st.selectbox("ECR Postcode", ecr_cols)
+    ecr_x_col = st.selectbox("ECR X (Easting)", ecr_cols)
+    ecr_y_col = st.selectbox("ECR Y (Northing)", ecr_cols)
 
-    # --- Step 5: "Column to pull" (from SEARCH df depending on direction) ---
-    st.subheader("Column to Pull from Matched Results")
+    # --- Step 5: Column to pull
+    st.subheader("Column to Pull")
     if base_is_repd:
         pull_source_name = "ECR"
-        pull_col = st.selectbox("Select a column from ECR to pull into results", ecr_cols,
-                                index=(ecr_cols.index("ECR_ID") if "ECR_ID" in ecr_cols else 0))
+        pull_col = st.selectbox("Select column from ECR to pull", ecr_cols)
     else:
         pull_source_name = "REPD"
-        pull_col = st.selectbox("Select a column from REPD to pull into results", repd_cols,
-                                index=(repd_cols.index("REPD_ID") if "REPD_ID" in repd_cols else 0))
-
+        pull_col = st.selectbox("Select column from REPD to pull", repd_cols)
     dynamic_pull_col_name = f"Matched_{pull_source_name}_{pull_col}"
 
-    # --- Step 9: Ignore these matches (before range) ---
-    st.subheader("Ignore These Matches (optional)")
+    # --- Step 9: Ignore matches
+    st.subheader("Ignore These Matches")
     ignore_options = [
         "Spatial",
         "Spatial, Text (GrpA)",
         "Spatial, Text (GrpB)",
         "Spatial, Capacity",
     ]
-    ignore_selected = st.multiselect("Pick exact combinations of 'Matching Reason' to mark as Ignored", ignore_options, default=[])
+    ignore_selected = st.multiselect("Choose combinations to ignore", ignore_options, [])
 
-    # --- Step 7: Range input (based on BASE df) ---
+    # --- Step 7: Range input
     st.subheader("Base ID Range")
-    base_id_label = f"{'REPD' if base_is_repd else 'ECR'} ID column"
     base_id_col = repd_id_col if base_is_repd else ecr_id_col
-    start_id = st.text_input(f"Enter start {base_id_label}")
-    end_id = st.text_input(f"Enter end {base_id_label}")
+    start_id = st.text_input(f"Start ID ({base_id_col})")
+    end_id = st.text_input(f"End ID ({base_id_col})")
 
-    # --- Run ---
+    # ----------------------------
+    # Run button
+    # ----------------------------
     if start_id and end_id and st.button("🔍 Run Matching"):
-        # Validate numeric
         try:
-            start_id_num = int(start_id)
-            end_id_num   = int(end_id)
+            start_id_num, end_id_num = int(start_id), int(end_id)
         except ValueError:
-            st.error("ID range must be numeric.")
+            st.error("IDs must be numeric.")
             st.stop()
 
-        # Build BASE and SEARCH frames
-        base_df  = repd_df.copy() if base_is_repd else ecr_df.copy()
+        base_df = repd_df.copy() if base_is_repd else ecr_df.copy()
         search_df = ecr_df.copy() if base_is_repd else repd_df.copy()
 
-        # Force base ID numeric & filter by range
         base_df[base_id_col] = pd.to_numeric(base_df[base_id_col], errors="coerce")
-        base_df = base_df[(base_df[base_id_col] >= start_id_num) & (base_df[base_id_col] <= end_id_num)].copy()
+        base_df = base_df[(base_df[base_id_col] >= start_id_num) & (base_df[base_id_col] <= end_id_num)]
 
-        # Cast numerics for coords & capacities
+        # Clean numeric columns
         if base_is_repd:
-            base_df  = safe_to_numeric(base_df,  [repd_x_col, repd_y_col, repd_cap_col])
+            base_df = safe_to_numeric(base_df, [repd_x_col, repd_y_col, repd_cap_col])
             search_df = safe_to_numeric(search_df, [ecr_x_col, ecr_y_col, ecr_cap_col, ecr_already_col, ecr_accepted_col])
         else:
-            base_df  = safe_to_numeric(base_df,  [ecr_x_col, ecr_y_col, ecr_cap_col, ecr_already_col, ecr_accepted_col])
+            base_df = safe_to_numeric(base_df, [ecr_x_col, ecr_y_col, ecr_cap_col, ecr_already_col, ecr_accepted_col])
             search_df = safe_to_numeric(search_df, [repd_x_col, repd_y_col, repd_cap_col])
 
-        # Insert required columns at the start (point 5 + original three)
+        # Add output columns
         out_cols = [dynamic_pull_col_name, "Matching Reason", "Matched Details REPD", "Matched Details ECR"]
-        for col in reversed(out_cols):
-            base_df.insert(0, col, "NF")
+        for c in reversed(out_cols):
+            base_df.insert(0, c, "NF")
 
-        # Build GeoDataFrames
+        # Build geodataframes (cached)
         if base_is_repd:
-            base_gdf = build_geo(base_df, repd_x_col, repd_y_col)
-            search_gdf = build_geo(search_df, ecr_x_col, ecr_y_col)
+            base_gdf = make_geodf(base_df, repd_x_col, repd_y_col)
+            search_gdf = make_geodf(search_df, ecr_x_col, ecr_y_col)
         else:
-            base_gdf = build_geo(base_df, ecr_x_col, ecr_y_col)
-            search_gdf = build_geo(search_df, repd_x_col, repd_y_col)
+            base_gdf = make_geodf(base_df, ecr_x_col, ecr_y_col)
+            search_gdf = make_geodf(search_df, repd_x_col, repd_y_col)
 
-        # Column maps for matching
         base_cols_map = {
             "capacity": repd_cap_col if base_is_repd else ecr_cap_col,
-            "text_a":   repd_text_a_cols if base_is_repd else ecr_text_a_cols,
-            "text_b":   repd_text_b_cols if base_is_repd else ecr_text_b_cols,
+            "text_a": repd_text_a_cols if base_is_repd else ecr_text_a_cols,
+            "text_b": repd_text_b_cols if base_is_repd else ecr_text_b_cols,
             "postcode": repd_pc_col if base_is_repd else ecr_pc_col,
         }
         search_cols_map = {
             "capacity": ecr_cap_col if base_is_repd else repd_cap_col,
-            "text_a":   ecr_text_a_cols if base_is_repd else repd_text_a_cols,
-            "text_b":   ecr_text_b_cols if base_is_repd else repd_text_b_cols,
+            "text_a": ecr_text_a_cols if base_is_repd else repd_text_a_cols,
+            "text_b": ecr_text_b_cols if base_is_repd else repd_text_b_cols,
             "postcode": ecr_pc_col if base_is_repd else repd_pc_col,
         }
 
         # Matching
         results = base_df.copy()
-        buffer_m = float(buffer_km) * 1000.0
-
-        for idx, base_row in base_gdf.iterrows():
-            geom = base_row.geometry
+        buffer_m = buffer_km * 1000
+        for idx, b in base_gdf.iterrows():
+            geom = b.geometry
             if geom is None or pd.isna(geom.x) or pd.isna(geom.y):
                 continue
-
-            # Spatial pre-filter
             buf = geom.buffer(buffer_m)
             candidates = search_gdf[search_gdf.intersects(buf)]
             if candidates.empty:
                 continue
 
-            best = None
-            best_score = -1
-            best_reasons = ""
-            best_base_details = []
-            best_search_details = []
-
-            for _, srow in candidates.iterrows():
-                score, reasons, base_details, search_details = compute_match(
-                    base_row=base_row,
-                    search_row=srow,
-                    text_thresh=text_thresh,
-                    base_cols=base_cols_map,
-                    search_cols=search_cols_map,
-                    is_search_ecr=(not base_is_repd),
-                    ecr_status_col=ecr_status_col,
-                    ecr_alr_col=ecr_already_col,
-                    ecr_acc_col=ecr_accepted_col,
-                    cap_tolerance=cap_tol
+            best, best_score, best_reasons = None, -1, ""
+            best_base_details, best_search_details = [], []
+            for _, s in candidates.iterrows():
+                score, reasons, bd, sd = compute_match(
+                    b, s, text_thresh, base_cols_map, search_cols_map,
+                    not base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
                 if score > best_score:
-                    best_score = score
-                    best = srow
-                    best_reasons = reasons
-                    best_base_details = base_details
-                    best_search_details = search_details
+                    best, best_score, best_reasons = s, score, reasons
+                    best_base_details, best_search_details = bd, sd
 
             if best is not None:
-                # Fill pull column
-                if base_is_repd:
-                    results.at[idx, dynamic_pull_col_name] = best.get(pull_col, "NF")
-                else:
-                    results.at[idx, dynamic_pull_col_name] = best.get(pull_col, "NF")
-
+                results.at[idx, dynamic_pull_col_name] = best.get(pull_col, "NF")
                 results.at[idx, "Matching Reason"] = best_reasons
-
-                # Keep detail column names as requested ("like before")
-                # Populate REPD / ECR detail sides consistently by dataset
                 if base_is_repd:
                     results.at[idx, "Matched Details REPD"] = "; ".join(best_base_details)
                     results.at[idx, "Matched Details ECR"] = "; ".join(best_search_details)
@@ -376,25 +301,24 @@ if repd_df is not None and ecr_df is not None:
                     results.at[idx, "Matched Details ECR"] = "; ".join(best_base_details)
                     results.at[idx, "Matched Details REPD"] = "; ".join(best_search_details)
 
-        # --- Step 9: Apply "Ignore these matches"
+        # Ignore matches
         if ignore_selected:
-            mask_ignore = results["Matching Reason"].isin(ignore_selected)
-            results.loc[mask_ignore, "Matching Reason"] = "Ignored"
-            results.loc[mask_ignore, dynamic_pull_col_name] = "Ignored"
+            mask = results["Matching Reason"].isin(ignore_selected)
+            results.loc[mask, "Matching Reason"] = "Ignored"
+            results.loc[mask, dynamic_pull_col_name] = "Ignored"
 
-        # --- Show results
+        # Display + Save
         st.subheader("Results")
         st.dataframe(results, use_container_width=True)
 
-        # --- Step 10: Output filename
         base_name = "REPD" if base_is_repd else "ECR"
         search_name = "ECR" if base_is_repd else "REPD"
         out_file = f"Search_{base_name}_projectID_{start_id_num}_{end_id_num}_in_{search_name}.xlsx"
 
         results.to_excel(out_file, index=False)
         with open(out_file, "rb") as f:
-            st.download_button("📥 Download Results as Excel", f, file_name=out_file)
+            st.download_button("📥 Download Results", f, file_name=out_file)
 
-        # Reset
         if st.button("🔄 Clear and Start Again"):
+            st.session_state.clear()
             st.experimental_rerun()
