@@ -175,35 +175,38 @@ if repd_df is not None and ecr_df is not None:
     # --- Step 4: Column mapping (same structure)
     st.subheader("Column Mapping")
 
+   # --- REPD columns ---
     st.markdown("**REPD columns**")
-    repd_id_col = st.selectbox("REPD ID", repd_cols)
-    repd_cap_col = st.selectbox("REPD Capacity", repd_cols)
-    repd_text_a_cols = st.multiselect("REPD Text Group A", repd_cols)
-    repd_text_b_cols = st.multiselect("REPD Text Group B", repd_cols)
-    repd_pc_col = st.selectbox("REPD Postcode", repd_cols)
-    repd_x_col = st.selectbox("REPD X (Easting)", repd_cols)
-    repd_y_col = st.selectbox("REPD Y (Northing)", repd_cols)
-
+    repd_id_col = st.selectbox("REPD ID", [""] + repd_cols, index=0, help="Unique project ID column in the REPD dataset (e.g. 'REPD_ID').")
+    repd_cap_col = st.selectbox("REPD Capacity", [""] + repd_cols, index=0, help="Column containing the installed capacity of the project in MW (e.g. 'Installed Capacity (MWelec)').")
+    repd_text_a_cols = st.multiselect("REPD Text Group A", repd_cols, help="Text fields used for Group A name matching (commonly 'Operator (or Applicant)' and 'Site Name').")
+    repd_text_b_cols = st.multiselect("REPD Text Group B", repd_cols, help="Text fields used for Group B name matching (commonly 'Site Name' and 'Address').")
+    repd_pc_col = st.selectbox("REPD Postcode", [""] + repd_cols, index=0, help="Column containing the site postcode in the REPD dataset (e.g. 'Post Code').")
+    repd_x_col = st.selectbox("REPD X (Easting)", [""] + repd_cols, index=0, help="Easting (X-coordinate) column for REPD project locations.")
+    repd_y_col = st.selectbox("REPD Y (Northing)", [""] + repd_cols, index=0, help="Northing (Y-coordinate) column for REPD project locations.")
+    
+    # --- ECR columns ---
     st.markdown("---")
     st.markdown("**ECR columns**")
-    ecr_id_col = st.selectbox("ECR ID", ecr_cols)
-    ecr_text_a_cols = st.multiselect("ECR Text Group A", ecr_cols)
-    ecr_text_b_cols = st.multiselect("ECR Text Group B", ecr_cols)
-    ecr_status_col = st.selectbox("ECR Connection Status", ecr_cols)
-    ecr_already_col = st.selectbox("ECR Already Connected Capacity", ecr_cols)
-    ecr_accepted_col = st.selectbox("ECR Accepted to Connect Capacity", ecr_cols)
-    ecr_pc_col = st.selectbox("ECR Postcode", ecr_cols)
-    ecr_x_col = st.selectbox("ECR X (Easting)", ecr_cols)
-    ecr_y_col = st.selectbox("ECR Y (Northing)", ecr_cols)
+    ecr_id_col = st.selectbox("ECR ID", [""] + ecr_cols, index=0, help="Unique project ID column in the ECR dataset (e.g. 'ECR_ID').")
+    ecr_text_a_cols = st.multiselect("ECR Text Group A", ecr_cols, help="Text fields used for Group A name matching (commonly 'Customer Name' and 'Customer Site').")
+    ecr_text_b_cols = st.multiselect("ECR Text Group B", ecr_cols, help="Text fields used for Group B name matching (commonly 'Customer Site' and 'Address Line 1').")
+    ecr_status_col = st.selectbox("ECR Connection Status", [""] + ecr_cols, index=0, help="Column indicating connection status (e.g. 'Connected', 'Accepted To Connect'). Used to determine which capacity column to apply.")
+    ecr_already_col = st.selectbox("ECR Already Connected Capacity", [""] + ecr_cols, index=0, help="Column containing the capacity (MW) for already connected projects.")
+    ecr_accepted_col = st.selectbox("ECR Accepted to Connect Capacity", [""] + ecr_cols, index=0, help="Column containing the capacity (MW) for projects accepted to connect but not yet connected.")
+    ecr_pc_col = st.selectbox("ECR Postcode", [""] + ecr_cols, index=0, help="Column containing the site postcode in the ECR dataset.")
+    ecr_x_col = st.selectbox("ECR X (Easting)", [""] + ecr_cols, index=0, help="Easting (X-coordinate) column for ECR connection locations.")
+    ecr_y_col = st.selectbox("ECR Y (Northing)", [""] + ecr_cols, index=0, help="Northing (Y-coordinate) column for ECR connection locations.")
+
 
     # --- Step 5: Column to pull
     st.subheader("Column to Pull")
     if base_is_repd:
         pull_source_name = "ECR"
-        pull_col = st.selectbox("Select column from ECR to pull", ecr_cols)
+        pull_col = st.selectbox("Select column from ECR to pull", [""] + ecr_cols, index=0, help="E.g. ECR_ID or Project name. This column will be added to the output table.")
     else:
         pull_source_name = "REPD"
-        pull_col = st.selectbox("Select column from REPD to pull", repd_cols)
+        pull_col = st.selectbox("Select column from REPD to pull", [""] + repd_cols, index=0, help="E.g. Ref ID or Development Status. This column will be added to the output table.")
     dynamic_pull_col_name = f"Matched_{pull_source_name}_{pull_col}"
 
     # --- Step 9: Ignore matches
