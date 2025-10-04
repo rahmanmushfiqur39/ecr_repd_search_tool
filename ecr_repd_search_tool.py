@@ -309,8 +309,7 @@ if repd_df is not None and ecr_df is not None:
             best_base_details, best_search_details = [], []
             for _, s in candidates.iterrows():
                 score, reasons, bd, sd = compute_match(
-                    b, s, text_thresh, base_cols_map, search_cols_map,
-                    not base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
+                    b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
                 # --- DEBUG: check capacity inputs ---
                 st.write({
