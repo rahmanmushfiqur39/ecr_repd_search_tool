@@ -1,0 +1,7 @@
+streamlit>=1.35
+pandas>=2.2
+numpy>=1.26
+geopandas>=1.0
+shapely>=2.0
+rapidfuzz>=3.5
+openpyxl>=3.1
