@@ -57,28 +57,10 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         base_cap = ecr_effective_capacity(base_row, ecr_status_col, ecr_alr_col, ecr_acc_col)
       
     if pd.notna(base_cap) and pd.notna(search_cap):
-        diff = abs(search_cap - base_cap)
-        tol = cap_tolerance * base_cap
-        st.write({
-            "DEBUG": "Capacity Check",
-            "base_cap": base_cap,
-            "search_cap": search_cap,
-            "diff": diff,
-            "tolerance_limit": tol,
-            "cap_tolerance": cap_tolerance,
-            "condition_met": diff <= tol
-        })
-        if diff <= tol:
+        if abs(search_cap - base_cap) <= cap_tolerance * base_cap:
             reasons.add("Capacity")
             base_details.append(f"capacity: {base_cap}")
             search_details.append(f"capacity: {search_cap}")
-    else:
-        st.write({
-            "DEBUG": "Capacity skipped (NaN)",
-            "base_cap": base_cap,
-            "search_cap": search_cap
-        })
-
 
     # Text Group A
     base_text_a = joined_text(base_row, base_cols["text_a"])
@@ -311,25 +293,7 @@ if repd_df is not None and ecr_df is not None:
                 score, reasons, bd, sd = compute_match(
                     b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
-                # --- DEBUG: check capacity inputs ---
-                st.write({
-                    "base_id": b.get(repd_id_col if base_is_repd else ecr_id_col),
-                    "search_id": s.get(ecr_id_col if base_is_repd else repd_id_col),
-                    "status": s.get(ecr_status_col),
-                    "base_cap_col": base_cols_map["capacity"],
-                    "search_cap_col": search_cols_map["capacity"],
-                    "base_cap": (
-                        pd.to_numeric(b.get(base_cols_map["capacity"], np.nan), errors="coerce")
-                        if base_is_repd
-                        else ecr_effective_capacity(b, ecr_status_col, ecr_already_col, ecr_accepted_col)
-                    ),
-                    "search_cap": (
-                        ecr_effective_capacity(s, ecr_status_col, ecr_already_col, ecr_accepted_col)
-                        if base_is_repd
-                        else pd.to_numeric(s.get(search_cols_map["capacity"], np.nan), errors="coerce")
-                    ),
-                })
-
+ 
                 if score > best_score:
                     best, best_score, best_reasons = s, score, reasons
                     best_base_details, best_search_details = bd, sd
