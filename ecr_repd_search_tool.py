@@ -42,8 +42,18 @@ def ordered_reasons(flags):
     return ", ".join([r for r in order if r in flags])
 
 def clean_text(s):
-    s = re.sub(r"[^A-Za-z0-9 ]", " ", str(s))
-    return " ".join(s.split()).lower()
+    """
+    Cleans a text string for fuzzy matching.
+    Removes punctuation, lowercases, and ignores placeholders like 'data not available'.
+    """
+    s = str(s).strip().lower()
+    if not s or s in ["data not available", "n/a", "na", "none", "no data"]:
+        return ""
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    s = " ".join(s.split())
+    # Also remove internal occurrences like "solar farm data not available ltd"
+    s = s.replace("data not available", "").strip()
+    return s
 
 def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
                   is_search_ecr, ecr_status_col, ecr_alr_col, ecr_acc_col, cap_tolerance):
