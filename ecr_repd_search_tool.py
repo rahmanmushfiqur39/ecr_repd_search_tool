@@ -179,11 +179,18 @@ if repd_df is not None and ecr_df is not None:
     st.subheader("Matching Parameters")
     cols_params = st.columns(3)
     with cols_params[0]:
-        buffer_km = st.number_input("Buffer distance (km)", 0.0, 100.0, DEFAULT_BUFFER_KM, 0.5)
+        buffer_km = st.number_input(" Spatial search buffer distance (km)", 0.0, 100.0, DEFAULT_BUFFER_KM, 0.5)
     with cols_params[1]:
         cap_tol = st.number_input("Capacity tolerance (fraction)", 0.0, 1.0, DEFAULT_CAP_TOL, 0.01)
     with cols_params[2]:
         text_thresh = st.slider("Text matching factor (0–100)", 0, 100, DEFAULT_TEXT_THRESH)
+    
+    keep_spatial_only_m = st.number_input(
+    "Keep entries within the buffer area without any matches only if within (m)",
+    0.0, 5000.0, 1000.0, 100.0,
+    help="Entries within the buffer with no matching (no text, capacity, or postcode) will be kept only if they are within this distance in metres."
+    )
+
 
     # --- Step 4: Column mapping (same structure)
     st.subheader("Column Mapping")
@@ -302,16 +309,25 @@ if repd_df is not None and ecr_df is not None:
 
             best, best_score, best_reasons = None, -1, ""
             best_base_details, best_search_details = [], []
+            best_distance = None
             for _, s in candidates.iterrows():
+                distance_m = geom.distance(s.geometry)
                 score, reasons, bd, sd = compute_match(
                     b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
- 
+
+                # Add distance to Spatial label
+                if "Spatial" in reasons:
+                    reasons = reasons.replace("Spatial", f"Spatial ({distance_m:.1f} m)")
                 if score > best_score:
                     best, best_score, best_reasons = s, score, reasons
                     best_base_details, best_search_details = bd, sd
-
+            
+            # --- Handle spatial-only filtering here ---
             if best is not None:
+                if best_score == 1 and best_distance > keep_spatial_only_m:
+                    continue  # skip too-distant spatial-only matches
+                    
                 results.at[idx, dynamic_pull_col_name] = best.get(pull_col, "NF")
                 results.at[idx, "Matching Reason"] = best_reasons
                 if base_is_repd:
