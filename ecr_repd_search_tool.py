@@ -65,8 +65,8 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     if pd.notna(base_cap) and pd.notna(search_cap):
         if abs(search_cap - base_cap) <= cap_tolerance * base_cap:
             reasons.add("Capacity")
-            base_details.append(f"c: {base_cap}")
-            search_details.append(f"c: {search_cap}")
+            base_details.append(f"C: {base_cap}")
+            search_details.append(f"C: {search_cap}")
 
     # --- Text Group A ---
     base_text_a = clean_text(joined_text(base_row, base_cols["text_a"]))
@@ -98,8 +98,8 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     search_pc = normalize_postcode(search_row.get(search_cols["postcode"], ""))
     if base_pc and search_pc and base_pc == search_pc:
         reasons.add("Postcode")
-        base_details.append(f"pc: {base_pc}")
-        search_details.append(f"pc: {search_pc}")
+        base_details.append(f"PC: {base_pc}")
+        search_details.append(f"PC: {search_pc}")
 
     return len(reasons), ordered_reasons(reasons), base_details, search_details
 
