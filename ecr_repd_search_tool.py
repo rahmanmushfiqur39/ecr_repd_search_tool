@@ -187,7 +187,7 @@ if repd_df is not None and ecr_df is not None:
     
     keep_spatial_only_m = st.number_input(
     "Keep entries within the buffer area without any matches only if within (m)",
-    0.0, 5000.0, 1000.0, 100.0,
+    0.0, 5000.0, 100.0, 100.0,
     help="Entries within the buffer with no matching (no text, capacity, or postcode) will be kept only if they are within this distance in metres."
     )
 
