@@ -76,7 +76,7 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
             fuzz.token_sort_ratio(base_text_a, search_text_a),
             fuzz.partial_ratio(base_text_a, search_text_a)
         )
-        st.write({"DEBUG": "TextA score", "score": text_score_a, "base": base_text_a, "search": search_text_a})
+        st.write({"base_id": b.get(repd_id_col if base_is_repd else ecr_id_col), "DEBUG": "TextA score", "score": text_score_a, "base": base_text_a, "search": search_text_a})
         if text_score_a >= text_thresh:
             reasons.add("Text (GrpA)")
             base_details.append(f"textA: {base_text_a}")
@@ -90,7 +90,7 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
             fuzz.token_sort_ratio(base_text_b, search_text_b),
             fuzz.partial_ratio(base_text_b, search_text_b)
         )
-        st.write({"DEBUG": "TextB score", "score": text_score_b, "base": base_text_b, "search": search_text_b})
+        st.write({"base_id": b.get(repd_id_col if base_is_repd else ecr_id_col), "DEBUG": "TextB score", "score": text_score_b, "base": base_text_b, "search": search_text_b})
         if text_score_b >= text_thresh:
             reasons.add("Text (GrpB)")
             base_details.append(f"textB: {base_text_b}")
