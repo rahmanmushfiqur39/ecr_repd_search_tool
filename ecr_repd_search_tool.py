@@ -76,7 +76,6 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         token_ratio_a= fuzz.token_sort_ratio(base_text_a, search_text_a)
         partial_ratio_a= fuzz.partial_ratio(base_text_a, search_text_a)
         text_score_a = max(token_ratio_a, partial_ratio_a)
-        st.write({"base_id": b.get(repd_id_col if base_is_repd else ecr_id_col), "search_id": s.get(ecr_id_col if base_is_repd else repd_id_col), "Token Ratio": token_ratio_a, "Partial Ratio": partial_ratio_a, "score": text_score_a, "base": base_text_a, "search": search_text_a})
         if text_score_a >= text_thresh:
             reasons.add("Text (GrpA)")
             base_details.append(f"textA: {base_text_a}")
@@ -89,7 +88,6 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         token_ratio_b= fuzz.token_sort_ratio(base_text_b, search_text_b)
         partial_ratio_b= fuzz.partial_ratio(base_text_b, search_text_b)
         text_score_b = max(token_ratio_b, partial_ratio_b)
-        st.write({"base_id": b.get(repd_id_col if base_is_repd else ecr_id_col), "search_id": s.get(ecr_id_col if base_is_repd else repd_id_col), "Token Ratio": token_ratio_b, "Partial Ratio": partial_ratio_b, "score": text_score_b, "base": base_text_b, "search": search_text_b})
         if text_score_b >= text_thresh:
             reasons.add("Text (GrpB)")
             base_details.append(f"textB: {base_text_b}")
