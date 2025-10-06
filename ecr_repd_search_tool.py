@@ -312,34 +312,54 @@ if repd_df is not None and ecr_df is not None:
         for idx, b in base_gdf.iterrows():
             geom = b.geometry
             if geom is None or pd.isna(geom.x) or pd.isna(geom.y):
+                # still add "NF" record if geometry missing
+                b_copy = b.copy()
+                b_copy[dynamic_pull_col_name] = "NF"
+                b_copy["Matching Reason"] = "No Geometry"
+                b_copy["Matched Details REPD"] = "NF"
+                b_copy["Matched Details ECR"] = "NF"
+                results_rows.append(b_copy)
                 continue
+        
             buf = geom.buffer(buffer_m)
             candidates = search_gdf[search_gdf.intersects(buf)]
+        
             if candidates.empty:
+                # no spatial matches at all
+                b_copy = b.copy()
+                b_copy[dynamic_pull_col_name] = "NF"
+                b_copy["Matching Reason"] = "No Match"
+                b_copy["Matched Details REPD"] = "NF"
+                b_copy["Matched Details ECR"] = "NF"
+                results_rows.append(b_copy)
                 continue
-
+        
             best_matches = []
             best_score = -1
-
+        
+            # evaluate all nearby candidates
             for _, s in candidates.iterrows():
                 distance_m = geom.distance(s.geometry)
                 score, reasons, bd, sd = compute_match(
                     b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd,
                     ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
-
+        
                 if "Spatial" in reasons:
                     reasons = reasons.replace("Spatial", f"Spatial ({distance_m:.1f} m)")
-
+        
                 if score > best_score:
                     best_score = score
                     best_matches = [(s, score, reasons, bd, sd, distance_m)]
                 elif score == best_score:
                     best_matches.append((s, score, reasons, bd, sd, distance_m))
-
+        
+            # keep all matches that satisfy distance rule
+            valid_found = False
             for s, score, reasons, bd, sd, distance_m in best_matches:
                 if score == 1 and distance_m > keep_spatial_only_m:
-                    continue
+                    continue  # skip distant spatial-only matches
+        
                 row = b.copy()
                 row[dynamic_pull_col_name] = s.get(pull_col, "NF")
                 row["Matching Reason"] = reasons
@@ -350,15 +370,19 @@ if repd_df is not None and ecr_df is not None:
                     row["Matched Details ECR"] = "; ".join(bd)
                     row["Matched Details REPD"] = "; ".join(sd)
                 results_rows.append(row)
-
-        if results_rows:
-            results = pd.DataFrame(results_rows)
-        else:
-            results = base_df.copy()
-            results[dynamic_pull_col_name] = "NF"
-            results["Matched Details REPD"] = "NF"
-            results["Matched Details ECR"] = "NF"
-            results["Matching Reason"] = "NF"
+                valid_found = True
+        
+            # if nothing passed threshold, still record as NF
+            if not valid_found:
+                b_copy = b.copy()
+                b_copy[dynamic_pull_col_name] = "NF"
+                b_copy["Matching Reason"] = "No Match (Filtered)"
+                b_copy["Matched Details REPD"] = "NF"
+                b_copy["Matched Details ECR"] = "NF"
+                results_rows.append(b_copy)
+        
+        # convert to dataframe
+        results = pd.DataFrame(results_rows)
 
         # Ignore matches
         if ignore_selected:
