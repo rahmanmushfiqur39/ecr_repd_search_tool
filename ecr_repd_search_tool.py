@@ -306,8 +306,9 @@ if repd_df is not None and ecr_df is not None:
         }
 
         # Matching
-        results = base_df.copy()
         buffer_m = buffer_km * 1000
+        results_rows = []
+
         for idx, b in base_gdf.iterrows():
             geom = b.geometry
             if geom is None or pd.isna(geom.x) or pd.isna(geom.y):
@@ -317,36 +318,47 @@ if repd_df is not None and ecr_df is not None:
             if candidates.empty:
                 continue
 
-            best, best_score, best_reasons = None, -1, ""
-            best_base_details, best_search_details = [], []
-            best_distance = None
+            best_matches = []
+            best_score = -1
+
             for _, s in candidates.iterrows():
                 distance_m = geom.distance(s.geometry)
                 score, reasons, bd, sd = compute_match(
-                    b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd, ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
+                    b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd,
+                    ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
 
-                # Add distance to Spatial label
                 if "Spatial" in reasons:
                     reasons = reasons.replace("Spatial", f"Spatial ({distance_m:.1f} m)")
+
                 if score > best_score:
-                    best, best_score, best_reasons = s, score, reasons
-                    best_base_details, best_search_details = bd, sd
-                    best_distance = distance_m   # ✅ capture best match distance here
-            
-            # --- Handle spatial-only filtering here ---
-            if best is not None:
-                if best_score == 1 and best_distance > keep_spatial_only_m:
-                    continue  # skip too-distant spatial-only matches
-                    
-                results.at[idx, dynamic_pull_col_name] = best.get(pull_col, "NF")
-                results.at[idx, "Matching Reason"] = best_reasons
+                    best_score = score
+                    best_matches = [(s, score, reasons, bd, sd, distance_m)]
+                elif score == best_score:
+                    best_matches.append((s, score, reasons, bd, sd, distance_m))
+
+            for s, score, reasons, bd, sd, distance_m in best_matches:
+                if score == 1 and distance_m > keep_spatial_only_m:
+                    continue
+                row = b.copy()
+                row[dynamic_pull_col_name] = s.get(pull_col, "NF")
+                row["Matching Reason"] = reasons
                 if base_is_repd:
-                    results.at[idx, "Matched Details REPD"] = "; ".join(best_base_details)
-                    results.at[idx, "Matched Details ECR"] = "; ".join(best_search_details)
+                    row["Matched Details REPD"] = "; ".join(bd)
+                    row["Matched Details ECR"] = "; ".join(sd)
                 else:
-                    results.at[idx, "Matched Details ECR"] = "; ".join(best_base_details)
-                    results.at[idx, "Matched Details REPD"] = "; ".join(best_search_details)
+                    row["Matched Details ECR"] = "; ".join(bd)
+                    row["Matched Details REPD"] = "; ".join(sd)
+                results_rows.append(row)
+
+        if results_rows:
+            results = pd.DataFrame(results_rows)
+        else:
+            results = base_df.copy()
+            results[dynamic_pull_col_name] = "NF"
+            results["Matched Details REPD"] = "NF"
+            results["Matched Details ECR"] = "NF"
+            results["Matching Reason"] = "NF"
 
         # Ignore matches
         if ignore_selected:
