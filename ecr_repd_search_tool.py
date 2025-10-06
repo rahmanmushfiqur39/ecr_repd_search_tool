@@ -131,7 +131,7 @@ def make_geodf(df, x_col, y_col):
 # Streamlit UI
 # ----------------------------
 st.set_page_config(page_title="ECR–REPD Matching Tool", layout="wide")
-st.title("⚡ ECR–REPD Matching Tool (Optimized)")
+st.title("⚡ ECR–REPD Matching Tool")
 
 # --- Step 1: File Input
 file_option = st.radio(
