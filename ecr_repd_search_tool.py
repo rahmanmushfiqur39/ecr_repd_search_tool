@@ -332,6 +332,7 @@ if repd_df is not None and ecr_df is not None:
                 if score > best_score:
                     best, best_score, best_reasons = s, score, reasons
                     best_base_details, best_search_details = bd, sd
+                    best_distance = distance_m   # ✅ capture best match distance here
             
             # --- Handle spatial-only filtering here ---
             if best is not None:
