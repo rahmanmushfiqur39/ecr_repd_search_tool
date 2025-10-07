@@ -59,6 +59,11 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
                   is_search_ecr, ecr_status_col, ecr_alr_col, ecr_acc_col, cap_tolerance):
     reasons = {"Spatial"}
     base_details, search_details = [], []
+    # --- Debug IDs ---
+    
+    base_id = base_row.get(base_cols.get("id", ""), "N/A")
+    search_id = search_row.get(search_cols.get("id", ""), "N/A")
+
 
     # --- Search capacity ---
     if is_search_ecr:
@@ -82,6 +87,8 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     base_text_a = clean_text(joined_text(base_row, base_cols["text_a"]))
     search_text_a = clean_text(joined_text(search_row, search_cols["text_a"]))
 
+    st.write("Base ID:", base_id)
+    st.write("Search ID:", search_id)
     st.write("🟩 Text A - Base:", base_text_a)
     st.write("🟦 Text A - Search:", search_text_a)
 
