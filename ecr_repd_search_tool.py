@@ -87,11 +87,6 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     base_text_a = clean_text(joined_text(base_row, base_cols["text_a"]))
     search_text_a = clean_text(joined_text(search_row, search_cols["text_a"]))
 
-    st.write("Base ID:", base_id)
-    st.write("Search ID:", search_id)
-    st.write("🟩 Text A - Base:", base_text_a)
-    st.write("🟦 Text A - Search:", search_text_a)
-
     if base_text_a or search_text_a:
         token_ratio_a= fuzz.token_sort_ratio(base_text_a, search_text_a)
         partial_ratio_a= fuzz.partial_ratio(base_text_a, search_text_a)
@@ -104,9 +99,6 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     # --- Text Group B ---
     base_text_b = clean_text(joined_text(base_row, base_cols["text_b"]))
     search_text_b = clean_text(joined_text(search_row, search_cols["text_b"]))
-
-    st.write("🟩 Text B - Base:", base_text_b)
-    st.write("🟦 Text B - Search:", search_text_b)
 
     if base_text_b or search_text_b:
         token_ratio_b= fuzz.token_sort_ratio(base_text_b, search_text_b)
