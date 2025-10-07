@@ -346,6 +346,28 @@ if repd_df is not None and ecr_df is not None:
             # evaluate all nearby candidates
             for _, s in candidates.iterrows():
                 distance_m = geom.distance(s.geometry)
+                
+                # --- 🔍 DEBUG SECTION ---
+                base_id_debug = b.get(base_id_col, "N/A")
+                search_id_col = ecr_id_col if base_is_repd else repd_id_col
+                search_id_debug = s.get(search_id_col, "N/A")
+            
+                # get cleaned text A/B for both
+                base_text_a_debug = clean_text(joined_text(b, base_cols_map["text_a"]))
+                base_text_b_debug = clean_text(joined_text(b, base_cols_map["text_b"]))
+                search_text_a_debug = clean_text(joined_text(s, search_cols_map["text_a"]))
+                search_text_b_debug = clean_text(joined_text(s, search_cols_map["text_b"]))
+            
+                st.write(f"🧩 **Base ID:** {base_id_debug} | **Search ID:** {search_id_debug}")
+                st.write(f"• Text A (Base): {base_text_a_debug}")
+                st.write(f"• Text A (Search): {search_text_a_debug}")
+                st.write(f"• Text B (Base): {base_text_b_debug}")
+                st.write(f"• Text B (Search): {search_text_b_debug}")
+                st.divider()
+                
+                # Debug section ends
+                
+                
                 score, reasons, bd, sd = compute_match(
                     b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd,
                     ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
