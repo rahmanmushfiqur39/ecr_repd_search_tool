@@ -60,6 +60,10 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     reasons = {"Spatial"}
     base_details, search_details = [], []
 
+    # --- Debug IDs ---
+    base_id = base_row.get(base_cols.get("id", ""), "N/A")
+    search_id = search_row.get(search_cols.get("id", ""), "N/A")
+
     # --- Search capacity ---
     if is_search_ecr:
         # search dataset is ECR
