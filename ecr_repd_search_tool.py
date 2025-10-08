@@ -72,69 +72,78 @@ def apply_filter_ui(df, name):
             return filtered_df
     return df
 
+# Returns Debug info as well
+
 def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
                   is_search_ecr, ecr_status_col, ecr_alr_col, ecr_acc_col, cap_tolerance):
     reasons = {"Spatial"}
-    base_details, search_details = [], []
-    # --- Debug IDs ---
-    
+
+    # --- IDs ---
     base_id = base_row.get(base_cols.get("id", ""), "N/A")
     search_id = search_row.get(search_cols.get("id", ""), "N/A")
 
-
-    # --- Search capacity ---
+    # --- Capacity ---
     if is_search_ecr:
-        # search dataset is ECR
         search_cap = ecr_effective_capacity(search_row, ecr_status_col, ecr_alr_col, ecr_acc_col)
-        # base dataset is REPD
         base_cap = pd.to_numeric(base_row.get(base_cols["capacity"], np.nan), errors="coerce")
     else:
-        # search dataset is REPD
         search_cap = pd.to_numeric(search_row.get(search_cols["capacity"], np.nan), errors="coerce")
-        # base dataset is ECR
         base_cap = ecr_effective_capacity(base_row, ecr_status_col, ecr_alr_col, ecr_acc_col)
-      
+
+    base_details, search_details = [], []
     if pd.notna(base_cap) and pd.notna(search_cap):
         if abs(search_cap - base_cap) <= cap_tolerance * base_cap:
             reasons.add("Capacity")
-            base_details.append(f"C: {base_cap}")
-            search_details.append(f"C: {search_cap}")
 
     # --- Text Group A ---
     base_text_a = clean_text(joined_text(base_row, base_cols["text_a"]))
     search_text_a = clean_text(joined_text(search_row, search_cols["text_a"]))
-
+    text_score_a = None
     if base_text_a or search_text_a:
-        token_ratio_a= fuzz.token_sort_ratio(base_text_a, search_text_a)
-        partial_ratio_a= fuzz.partial_ratio(base_text_a, search_text_a)
+        token_ratio_a = fuzz.token_sort_ratio(base_text_a, search_text_a)
+        partial_ratio_a = fuzz.partial_ratio(base_text_a, search_text_a)
         text_score_a = max(token_ratio_a, partial_ratio_a)
         if text_score_a >= text_thresh:
             reasons.add("Text (GrpA)")
-            base_details.append(f"tA: {base_text_a}")
-            search_details.append(f"tA: {search_text_a}")
-    
+
     # --- Text Group B ---
     base_text_b = clean_text(joined_text(base_row, base_cols["text_b"]))
     search_text_b = clean_text(joined_text(search_row, search_cols["text_b"]))
-
+    text_score_b = None
     if base_text_b or search_text_b:
-        token_ratio_b= fuzz.token_sort_ratio(base_text_b, search_text_b)
-        partial_ratio_b= fuzz.partial_ratio(base_text_b, search_text_b)
+        token_ratio_b = fuzz.token_sort_ratio(base_text_b, search_text_b)
+        partial_ratio_b = fuzz.partial_ratio(base_text_b, search_text_b)
         text_score_b = max(token_ratio_b, partial_ratio_b)
         if text_score_b >= text_thresh:
             reasons.add("Text (GrpB)")
-            base_details.append(f"tB: {base_text_b}")
-            search_details.append(f"tB: {search_text_b}")
 
-    # Postcode
+    # --- Postcode ---
     base_pc = normalize_postcode(base_row.get(base_cols["postcode"], ""))
     search_pc = normalize_postcode(search_row.get(search_cols["postcode"], ""))
     if base_pc and search_pc and base_pc == search_pc:
         reasons.add("Postcode")
-        base_details.append(f"PC: {base_pc}")
-        search_details.append(f"PC: {search_pc}")
 
-    return len(reasons), ordered_reasons(reasons), base_details, search_details
+    score = len(reasons)
+    reasons_str = ordered_reasons(reasons)
+
+    debug_info = {
+        "base_id": base_id,
+        "search_id": search_id,
+        "score": score,
+        "reasons": reasons_str,
+        "base_text_a": base_text_a,
+        "search_text_a": search_text_a,
+        "text_score_a": text_score_a,
+        "base_text_b": base_text_b,
+        "search_text_b": search_text_b,
+        "text_score_b": text_score_b,
+        "base_cap": base_cap,
+        "search_cap": search_cap,
+        "base_pc": base_pc,
+        "search_pc": search_pc,
+    }
+
+    return score, reasons_str, base_details, search_details, debug_info
 
 
 # ----------------------------
@@ -290,6 +299,10 @@ if repd_df is not None and ecr_df is not None:
     start_id = st.text_input(f"Start ID ({base_id_col})")
     end_id = st.text_input(f"End ID ({base_id_col})")
 
+    # Debug Toggle
+    if start_id and end_id:
+        show_debug = st.checkbox("🔧 Show debug output for each comparison", value=False)
+
     # ----------------------------
     # Run button
     # ----------------------------
@@ -376,7 +389,7 @@ if repd_df is not None and ecr_df is not None:
             for _, s in candidates.iterrows():
                 distance_m = geom.distance(s.geometry)
                 
-                score, reasons, bd, sd = compute_match(
+                score, reasons, bd, sd, debug_info = compute_match(
                     b, s, text_thresh, base_cols_map, search_cols_map, base_is_repd,
                     ecr_status_col, ecr_already_col, ecr_accepted_col, cap_tol
                 )
@@ -384,6 +397,22 @@ if repd_df is not None and ecr_df is not None:
                 if "Spatial" in reasons:
                     reasons = reasons.replace("Spatial", f"Spatial ({distance_m:.1f} m)")
         
+                # --- DEBUG OUTPUT ---
+                if show_debug:
+                    with st.expander(f"Base {debug_info['base_id']} ↔ Search {debug_info['search_id']}"):
+                        st.text(f"Total Score: {debug_info['score']}")
+                        st.text(f"Matching Reason: {reasons}")
+                        st.text(f"Base Text A: {debug_info['base_text_a']}")
+                        st.text(f"Search Text A: {debug_info['search_text_a']}")
+                        st.text(f"Text A Score: {debug_info['text_score_a']}")
+                        st.text(f"Base Text B: {debug_info['base_text_b']}")
+                        st.text(f"Search Text B: {debug_info['search_text_b']}")
+                        st.text(f"Text B Score: {debug_info['text_score_b']}")
+                        st.text(f"Base Capacity: {debug_info['base_cap']}")
+                        st.text(f"Search Capacity: {debug_info['search_cap']}")
+                        st.text(f"Base Postcode: {debug_info['base_pc']}")
+                        st.text(f"Search Postcode: {debug_info['search_pc']}")
+                
                 if score > best_score:
                     best_score = score
                     best_matches = [(s, score, reasons, bd, sd, distance_m)]
