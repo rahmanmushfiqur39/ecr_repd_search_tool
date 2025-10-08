@@ -159,12 +159,12 @@ st.title("⚡ ECR–REPD Matching Tool")
 # --- Step 1: File Input
 file_option = st.radio(
     "Do you have one file with two sheets or two separate files?",
-    ("One file, two sheets (Sheets must be named REPD and ECR", "Two separate files")
+    ("One file, two sheets (Sheets must be named REPD and ECR)", "Two separate files")
 )
 
 repd_df, ecr_df = None, None
 
-if file_option == "One file, two sheets":
+if file_option == "One file, two sheets (Sheets must be named REPD and ECR)":
     uploaded = st.file_uploader("Upload Excel file", type=["xlsx"])
     if uploaded:
         if "repd_df" not in st.session_state:
