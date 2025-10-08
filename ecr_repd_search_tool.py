@@ -60,7 +60,7 @@ def apply_filter_ui(df, name):
     Streamlit UI for filtering a dataframe by one or multiple values of a chosen column.
     Returns the filtered dataframe.
     """
-    st.markdown(f"### 🔍 Filter {name} dataset (optional)")
+    st.markdown(f"* 🔍 Filter {name} dataset (optional)")
     filter_col = st.selectbox(f"Select column to filter {name} by", [""] + list(df.columns), key=f"{name}_filter_col")
     if filter_col:
         unique_vals = sorted(df[filter_col].dropna().astype(str).unique())
