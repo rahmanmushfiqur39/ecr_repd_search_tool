@@ -94,6 +94,8 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     if pd.notna(base_cap) and pd.notna(search_cap):
         if abs(search_cap - base_cap) <= cap_tolerance * base_cap:
             reasons.add("Capacity")
+            base_details.append(f"C: {base_cap}")
+            search_details.append(f"C: {search_cap}")
 
     # --- Text Group A ---
     base_text_a = clean_text(joined_text(base_row, base_cols["text_a"]))
@@ -105,6 +107,8 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         text_score_a = max(token_ratio_a, partial_ratio_a)
         if text_score_a >= text_thresh:
             reasons.add("Text (GrpA)")
+            base_details.append(f"tA: {base_text_a}")
+            search_details.append(f"tA: {search_text_a}")
 
     # --- Text Group B ---
     base_text_b = clean_text(joined_text(base_row, base_cols["text_b"]))
@@ -116,13 +120,17 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         text_score_b = max(token_ratio_b, partial_ratio_b)
         if text_score_b >= text_thresh:
             reasons.add("Text (GrpB)")
-
+            base_details.append(f"tB: {base_text_b}")
+            search_details.append(f"tB: {search_text_b}")
+                      
     # --- Postcode ---
     base_pc = normalize_postcode(base_row.get(base_cols["postcode"], ""))
     search_pc = normalize_postcode(search_row.get(search_cols["postcode"], ""))
     if base_pc and search_pc and base_pc == search_pc:
         reasons.add("Postcode")
-
+        base_details.append(f"PC: {base_pc}")
+        search_details.append(f"PC: {search_pc}")
+        
     score = len(reasons)
     reasons_str = ordered_reasons(reasons)
 
