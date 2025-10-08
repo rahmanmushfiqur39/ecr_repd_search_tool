@@ -341,12 +341,14 @@ if repd_df is not None and ecr_df is not None:
             search_gdf = make_geodf(search_df, repd_x_col, repd_y_col)
 
         base_cols_map = {
+            "id": repd_id_col if base_is_repd else ecr_id_col,
             "capacity": repd_cap_col if base_is_repd else None,
             "text_a": repd_text_a_cols if base_is_repd else ecr_text_a_cols,
             "text_b": repd_text_b_cols if base_is_repd else ecr_text_b_cols,
             "postcode": repd_pc_col if base_is_repd else ecr_pc_col,
         }
         search_cols_map = {
+            "id": ecr_id_col if base_is_repd else repd_id_col,
             "capacity": repd_cap_col if not base_is_repd else None,
             "text_a": ecr_text_a_cols if base_is_repd else repd_text_a_cols,
             "text_b": ecr_text_b_cols if base_is_repd else repd_text_b_cols,
