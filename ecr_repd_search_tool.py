@@ -159,7 +159,7 @@ st.title("⚡ ECR–REPD Matching Tool")
 # --- Step 1: File Input
 file_option = st.radio(
     "Do you have one file with two sheets or two separate files?",
-    ("One file, two sheets", "Two separate files")
+    ("One file, two sheets (Sheets must be named REPD and ECR", "Two separate files")
 )
 
 repd_df, ecr_df = None, None
