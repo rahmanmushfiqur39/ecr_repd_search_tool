@@ -193,13 +193,14 @@ else:
 # ----------------------------
 # Optional filtering before matching
 # ----------------------------
-st.subheader("Optional Filtering")
-
-st.markdown("You can filter either dataset by one or more values of any column before running the match.")
-repd_df = apply_filter_ui(repd_df, "REPD")
-ecr_df = apply_filter_ui(ecr_df, "ECR")
-
-st.markdown("---")
+if repd_df is not None and ecr_df is not None:
+    st.subheader("Optional Filtering")
+    
+    st.markdown("You can filter either dataset by one or more values of any column before running the match.")
+    repd_df = apply_filter_ui(repd_df, "REPD")
+    ecr_df = apply_filter_ui(ecr_df, "ECR")
+    
+    st.markdown("---")
 
 
 # ----------------------------
