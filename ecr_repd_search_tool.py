@@ -389,7 +389,7 @@ if repd_df is not None and ecr_df is not None:
             if geom is None or pd.isna(geom.x) or pd.isna(geom.y):
                 # still add "NF" record if geometry missing
                 b_copy = b.copy()
-                b_copy[dynamic_pull_col_name] = "NF"
+                b_copy[dynamic_pull_col_names] = "NF"
                 b_copy["Matching Reason"] = "No Geometry"
                 b_copy["Matched Details REPD"] = "NF"
                 b_copy["Matched Details ECR"] = "NF"
@@ -402,7 +402,7 @@ if repd_df is not None and ecr_df is not None:
             if candidates.empty:
                 # no spatial matches at all
                 b_copy = b.copy()
-                b_copy[dynamic_pull_col_name] = "NF"
+                b_copy[dynamic_pull_col_names] = "NF"
                 b_copy["Matching Reason"] = "No Match"
                 b_copy["Matched Details REPD"] = "NF"
                 b_copy["Matched Details ECR"] = "NF"
@@ -453,7 +453,7 @@ if repd_df is not None and ecr_df is not None:
                     continue  # skip distant spatial-only matches
         
                 row = b.copy()
-                row[dynamic_pull_col_name] = s.get(pull_col, "NF")
+                row[dynamic_pull_col_names] = s.get(pull_col, "NF")
                 row["Matching Reason"] = reasons
                 if base_is_repd:
                     row["Matched Details REPD"] = "; ".join(bd)
@@ -467,7 +467,7 @@ if repd_df is not None and ecr_df is not None:
             # if nothing passed threshold, still record as NF
             if not valid_found:
                 b_copy = b.copy()
-                b_copy[dynamic_pull_col_name] = "NF"
+                b_copy[dynamic_pull_col_names] = "NF"
                 b_copy["Matching Reason"] = "No Match (Filtered)"
                 b_copy["Matched Details REPD"] = "NF"
                 b_copy["Matched Details ECR"] = "NF"
@@ -480,7 +480,7 @@ if repd_df is not None and ecr_df is not None:
         if ignore_selected:
             mask = results["Matching Reason"].isin(ignore_selected)
             results.loc[mask, "Matching Reason"] = "Ignored"
-            results.loc[mask, dynamic_pull_col_name] = "Ignored"
+            results.loc[mask, dynamic_pull_col_names] = "Ignored"
 
         # Display + Save
         st.subheader("Results")
