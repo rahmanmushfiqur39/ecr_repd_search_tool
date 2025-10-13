@@ -281,15 +281,32 @@ if repd_df is not None and ecr_df is not None:
     ecr_y_col = st.selectbox("ECR Y (Northing)", [""] + ecr_cols, index=ecr_cols.index("Location (y-coordinate): Northings (where data is held)")+1 if "Location (y-coordinate): Northings (where data is held)" in ecr_cols else 0, help="Northing (Y-coordinate) column for ECR connection locations.")
 
 
-    # --- Step 5: Column to pull
-    st.subheader("Column to Pull")
+    # --- Step 5: Columns to Pull ---
+    st.subheader("Columns to Pull")
+    
     if base_is_repd:
         pull_source_name = "ECR"
-        pull_col = st.selectbox("Select column from ECR to pull", [""] + ecr_cols, index=0, help="E.g. ECR_ID or Project name. This column will be added to the output table.")
+        pull_cols = st.multiselect(
+            f"Select one or more columns from {pull_source_name} to pull",
+            ecr_cols,
+            default=[],
+            help="Select one or more columns from ECR that will be added to the output table."
+        )
     else:
         pull_source_name = "REPD"
-        pull_col = st.selectbox("Select column from REPD to pull", [""] + repd_cols, index=0, help="E.g. Ref ID or Development Status. This column will be added to the output table.")
-    dynamic_pull_col_name = f"Matched_{pull_source_name}_{pull_col}"
+        pull_cols = st.multiselect(
+            f"Select one or more columns from {pull_source_name} to pull",
+            repd_cols,
+            default=[],
+            help="Select one or more columns from REPD that will be added to the output table."
+        )
+    
+    # Create dynamic column names
+    if pull_cols:
+        dynamic_pull_col_names = [f"Matched_{pull_source_name}_{c}" for c in pull_cols]
+    else:
+        dynamic_pull_col_names = [f"Matched_{pull_source_name}_None_Selected"]
+
 
     # --- Step 9: Ignore matches
     st.subheader("Ignore These Matches")
@@ -336,7 +353,7 @@ if repd_df is not None and ecr_df is not None:
             search_df = safe_to_numeric(search_df, [repd_x_col, repd_y_col, repd_cap_col])
 
         # Add output columns
-        out_cols = [ dynamic_pull_col_name, "Matched Details REPD","Matched Details ECR", "Matching Reason"]
+        out_cols = dynamic_pull_col_names + ["Matched Details REPD", "Matched Details ECR", "Matching Reason"]
         for c in out_cols:
             base_df.insert(0, c, "NF")
 
