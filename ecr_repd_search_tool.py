@@ -235,27 +235,31 @@ if repd_df is not None and ecr_df is not None:
 
     # --- Step 4: Column Mapping
     st.subheader("Column Mapping")
-    st.markdown("**REPD columns**")
-    repd_id_col = st.selectbox("REPD ID", [""] + repd_cols)
-    repd_cap_col = st.selectbox("REPD Capacity", [""] + repd_cols)
-    repd_text_a_cols = st.multiselect("REPD Text Group A", repd_cols)
-    repd_text_b_cols = st.multiselect("REPD Text Group B", repd_cols)
-    repd_pc_col = st.selectbox("REPD Postcode", [""] + repd_cols)
-    repd_x_col = st.selectbox("REPD X (Easting)", [""] + repd_cols)
-    repd_y_col = st.selectbox("REPD Y (Northing)", [""] + repd_cols)
+
+    repd_cols, ecr_cols = list(repd_df.columns), list(ecr_df.columns)
+
+    st.markdown("**REPD Columns**")
+    repd_id_col = st.selectbox("REPD ID", [""] + repd_cols, help="Unique project ID column in REPD (e.g. 'REPD_ID').")
+    repd_cap_col = st.selectbox("REPD Capacity", [""] + repd_cols, help="Installed capacity (MW).")
+    repd_text_a_cols = st.multiselect("REPD Text Group A", repd_cols, help="Fields like 'Operator' or 'Site Name'.")
+    repd_text_b_cols = st.multiselect("REPD Text Group B", repd_cols, help="Address fields for name comparison.")
+    repd_pc_col = st.selectbox("REPD Postcode", [""] + repd_cols, help="Site postcode column.")
+    repd_x_col = st.selectbox("REPD X (Easting)", [""] + repd_cols, help="X-coordinate column (Easting).")
+    repd_y_col = st.selectbox("REPD Y (Northing)", [""] + repd_cols, help="Y-coordinate column (Northing).")
 
     st.markdown("---")
-    st.markdown("**ECR columns**")
-    ecr_id_col = st.selectbox("ECR ID", [""] + ecr_cols)
-    ecr_text_a_cols = st.multiselect("ECR Text Group A", ecr_cols)
-    ecr_text_b_cols = st.multiselect("ECR Text Group B", ecr_cols)
-    ecr_status_col = st.selectbox("ECR Connection Status", [""] + ecr_cols)
-    ecr_already_col = st.selectbox("ECR Already Connected Capacity", [""] + ecr_cols)
-    ecr_accepted_col = st.selectbox("ECR Accepted to Connect Capacity", [""] + ecr_cols)
-    ecr_pc_col = st.selectbox("ECR Postcode", [""] + ecr_cols)
-    ecr_x_col = st.selectbox("ECR X (Easting)", [""] + ecr_cols)
-    ecr_y_col = st.selectbox("ECR Y (Northing)", [""] + ecr_cols)
+    st.markdown("**ECR Columns**")
+    ecr_id_col = st.selectbox("ECR ID", [""] + ecr_cols, help="Unique project ID in ECR (e.g. 'ECR_ID').")
+    ecr_text_a_cols = st.multiselect("ECR Text Group A", ecr_cols, help="Customer name or site name columns.")
+    ecr_text_b_cols = st.multiselect("ECR Text Group B", ecr_cols, help="Address Line 1 and 2 fields.")
+    ecr_status_col = st.selectbox("ECR Connection Status", [""] + ecr_cols, help="Status (Connected/Accepted).")
+    ecr_already_col = st.selectbox("ECR Already Connected Capacity", [""] + ecr_cols, help="Capacity (MW) already connected.")
+    ecr_accepted_col = st.selectbox("ECR Accepted to Connect Capacity", [""] + ecr_cols, help="Capacity (MW) accepted but not yet connected.")
+    ecr_pc_col = st.selectbox("ECR Postcode", [""] + ecr_cols, help="ECR site postcode.")
+    ecr_x_col = st.selectbox("ECR X (Easting)", [""] + ecr_cols, help="X-coordinate (Easting).")
+    ecr_y_col = st.selectbox("ECR Y (Northing)", [""] + ecr_cols, help="Y-coordinate (Northing).")
 
+    
     # --- Step 5: Columns to Pull ---
     st.subheader("Columns to Pull")
     if base_is_repd:
