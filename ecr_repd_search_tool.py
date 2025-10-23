@@ -197,8 +197,8 @@ else:
     if repd_file and ecr_file:
         if "repd_df" not in st.session_state:
             try:
-                st.session_state.repd_df = load_excel(repd_file)
-                st.session_state.ecr_df = load_excel(ecr_file)
+                st.session_state.repd_df = load_excel(repd_file, sheet="REPD")
+                st.session_state.ecr_df = load_excel(ecr_file, sheet="ECR")
                 st.success("✅ Loaded REPD and ECR files.")
             except Exception as e:
                 st.error(f"Error reading files: {e}")
