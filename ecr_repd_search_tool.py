@@ -43,17 +43,39 @@ def ordered_reasons(flags):
 
 def clean_text(s):
     """
-    Cleans a text string for fuzzy matching.
-    Removes punctuation, lowercases, and ignores placeholders like 'data not available'.
+    Cleans and normalizes text for fuzzy matching.
+    - Lowercases and strips punctuation.
+    - Removes corporate and generic filler words.
+    - Standardizes variants like 'windfarm' -> 'wind farm'.
+    - Removes embedded placeholders like 'data not available'.
     """
     s = str(s).strip().lower()
     if not s or s in ["data not available", "n/a", "na", "none", "no data"]:
         return ""
+
+    # Remove punctuation / symbols
     s = re.sub(r"[^a-z0-9 ]", " ", s)
     s = " ".join(s.split())
-    # Also remove internal occurrences like "solar farm data not available ltd"
+
+    # Standardize common variants
+    s = s.replace("wind-farm", "wind farm")
+    s = s.replace("windfarm", "wind farm")
+    s = s.replace("solarpark", "solar park")
+    s = s.replace("pvfarm", "pv farm")
+
+    # Remove embedded placeholders (restored from old version)
     s = s.replace("data not available", "").strip()
+
+    # Remove filler / generic tokens (keep 'wind' and 'farm'!)
+    filler_words = [
+                "scheme"
+    ]
+    pattern = r"\b(" + "|".join(filler_words) + r")\b"
+    s = re.sub(pattern, " ", s)
+    s = " ".join(s.split())
+
     return s
+
 
 
 def apply_filter_ui(df, name):
