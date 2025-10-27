@@ -321,6 +321,7 @@ if repd_df is not None and ecr_df is not None:
             help="E.g. Ref ID, Development Status. These columns will be added to the output table."
         )
     # Build the dynamic output column names
+    selected_pull_cols = list(reversed(selected_pull_cols))
     dynamic_pull_col_names = [f"Matched_{pull_source_name}_{c}" for c in selected_pull_cols]
 
     # --- Step 9: Ignore matches
