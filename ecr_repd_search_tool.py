@@ -68,7 +68,7 @@ def clean_text(s):
 
     # Remove filler / generic tokens (keep 'wind' and 'farm'!)
     filler_words = [
-               "limited", "ltd", "holdings", "renewables", "energy", "power", "project", "farm", "wind", "solar", "battery", "storage", "site", "scheme", "company", "developer", "development"
+               "scheme"
     ]
     pattern = r"\b(" + "|".join(filler_words) + r")\b"
     s = re.sub(pattern, " ", s)
