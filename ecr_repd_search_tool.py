@@ -43,17 +43,36 @@ def ordered_reasons(flags):
 
 def clean_text(s):
     """
-    Cleans a text string for fuzzy matching.
-    Removes punctuation, lowercases, and ignores placeholders like 'data not available'.
+    Cleans and normalizes text for fuzzy matching.
+    - Lowercases and strips punctuation.
+    - Removes corporate and generic filler words.
+    - Standardizes variants like 'windfarm' -> 'wind farm'.
     """
     s = str(s).strip().lower()
     if not s or s in ["data not available", "n/a", "na", "none", "no data"]:
         return ""
+    
+    # Remove punctuation / symbols
     s = re.sub(r"[^a-z0-9 ]", " ", s)
+    s = " ".join(s.split())  # collapse multiple spaces
+
+    # Standardize common variants
+    s = s.replace("windfarm", "wind farm")
+    s = s.replace("solarpark", "solar park")
+    s = s.replace("pvfarm", "pv farm")
+
+    # Remove filler / generic tokens
+    filler_words = [
+        "limited", "ltd", "holdings", "renewables", "energy", "power",
+        "project", "farm", "wind", "solar", "battery", "storage", "site",
+        "scheme", "company", "developer", "development"
+    ]
+    pattern = r"\b(" + "|".join(filler_words) + r")\b"
+    s = re.sub(pattern, " ", s)
     s = " ".join(s.split())
-    # Also remove internal occurrences like "solar farm data not available ltd"
-    s = s.replace("data not available", "").strip()
+
     return s
+
 
 def apply_filter_ui(df, name):
     """
@@ -103,7 +122,7 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         token_set_a = fuzz.token_set_ratio(base_text_a, search_text_a)
         token_sort_a = fuzz.token_sort_ratio(base_text_a, search_text_a)
         partial_a = fuzz.partial_ratio(base_text_a, search_text_a)
-        text_score_a = max(token_set_a, 0)
+        text_score_a = max(token_set_a, token_sort_a, partial_a)
         if text_score_a >= text_thresh:
             reasons.add("Text (GrpA)")
             base_details.append(f"tA: {base_text_a}")
@@ -117,7 +136,7 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
         token_set_b = fuzz.token_set_ratio(base_text_b, search_text_b)
         token_sort_b = fuzz.token_sort_ratio(base_text_b, search_text_b)
         partial_b = fuzz.partial_ratio(base_text_b, search_text_b)
-        text_score_b = max(token_set_b, 0)
+        text_score_b = max(token_set_b, token_sort_b, partial_b)
         if text_score_b >= text_thresh:
             reasons.add("Text (GrpB)")
             base_details.append(f"tB: {base_text_b}")
