@@ -123,7 +123,7 @@ def compute_match(base_row, search_row, text_thresh, base_cols, search_cols,
     search_text_a = clean_text(joined_text(search_row, search_cols["text_a"]))
     text_score_a = None
     if base_text_a or search_text_a:
-         text_score_a = fuzz.WRatio(base_text_a, search_text_a)
+        text_score_a = fuzz.WRatio(base_text_a, search_text_a)
         if text_score_a >= text_thresh:
             reasons.add("Text (GrpA)")
             base_details.append(f"tA: {base_text_a}")
