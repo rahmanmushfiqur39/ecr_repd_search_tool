@@ -91,17 +91,17 @@ def smart_text_match(a: str, b: str) -> float:
 
     # --- Core weighted score (weighted average, not max) ---
     # token_set dominates; partial gets light weight
-    score = (0.6 * token_set) + (0.3 * token_sort) + (0.1 * partial)
+    score = max(token_set, token_sort, partial)
 
-    # --- Shared-token logic ---
-    tokens_a, tokens_b = set(a.split()), set(b.split())
-    shared = tokens_a & tokens_b
-    union  = tokens_a | tokens_b
-    overlap_ratio = len(shared) / max(len(union), 1)
+    # # --- Shared-token logic ---
+    # tokens_a, tokens_b = set(a.split()), set(b.split())
+    # shared = tokens_a & tokens_b
+    # union  = tokens_a | tokens_b
+    # overlap_ratio = len(shared) / max(len(union), 1)
 
-    # If they share only 1 word or overlap < 0.25 → penalize heavily
-    if len(shared) < 2 or overlap_ratio < 0.25:
-        score *= overlap_ratio * 2  # scale down to near-zero if minimal overlap
+    # # If they share only 1 word or overlap < 0.25 → penalize heavily
+    # if len(shared) < 2 or overlap_ratio < 0.25:
+    #     score *= overlap_ratio * 2  # scale down to near-zero if minimal overlap
 
     return round(score, 2)
 
