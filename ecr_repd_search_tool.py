@@ -523,10 +523,13 @@ if repd_df is not None and ecr_df is not None:
 
         # Display + Save
         st.subheader("Results")
-        # # ✅ Prevent Arrow serialization errors
-        # for col in results.columns:
-        #     results[col] = results[col].astype(str)
-        st.dataframe(results, width='stretch')
+        # ✅ Prevent Arrow serialization errors (display only)
+        results_display = results.copy()
+        for col in results_display.columns:
+            results_display[col] = results_display[col].astype(str)
+        
+        st.dataframe(results_display, width='stretch')
+
 
         base_name = "REPD" if base_is_repd else "ECR"
         search_name = "ECR" if base_is_repd else "REPD"
