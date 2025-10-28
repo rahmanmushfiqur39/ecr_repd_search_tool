@@ -117,7 +117,7 @@ def apply_filter_ui(df, name):
         if selected_vals:
             filtered_df = df[df[filter_col].astype(str).isin(selected_vals)]
             st.success(f"✅ {len(filtered_df)} of {len(df)} rows kept after filtering.")
-            st.dataframe(filtered_df.head(5), use_container_width=True)
+            st.dataframe(filtered_df.head(5), width='stretch')
             return filtered_df
     return df
 
@@ -419,7 +419,7 @@ if repd_df is not None and ecr_df is not None:
 
         for idx, b in base_gdf.iterrows():
             geom = b.geometry
-            if geom is None or pd.isna(geom.x) or pd.isna(geom.y):
+            if geom is None or geom.is_empty or pd.isna(getattr(geom, "x", np.nan)) or pd.isna(getattr(geom, "y", np.nan)):
                 # still add "NF" record if geometry missing
                 b_copy = b.copy()
                 for col_name in dynamic_pull_col_names:
@@ -523,7 +523,10 @@ if repd_df is not None and ecr_df is not None:
 
         # Display + Save
         st.subheader("Results")
-        st.dataframe(results, use_container_width=True)
+        # ✅ Prevent Arrow serialization errors
+        for col in results.columns:
+            results[col] = results[col].astype(str)
+        st.dataframe(results, width='stretch')
 
         base_name = "REPD" if base_is_repd else "ECR"
         search_name = "ECR" if base_is_repd else "REPD"
