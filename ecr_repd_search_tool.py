@@ -523,9 +523,9 @@ if repd_df is not None and ecr_df is not None:
 
         # Display + Save
         st.subheader("Results")
-        # ✅ Prevent Arrow serialization errors
-        for col in results.columns:
-            results[col] = results[col].astype(str)
+        # # ✅ Prevent Arrow serialization errors
+        # for col in results.columns:
+        #     results[col] = results[col].astype(str)
         st.dataframe(results, width='stretch')
 
         base_name = "REPD" if base_is_repd else "ECR"
